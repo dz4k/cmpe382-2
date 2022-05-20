@@ -1,8 +1,51 @@
 #include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include "request.h"
 #include "io_helper.h"
 
 char default_root[] = ".";
+
+sem_t sema;
+
+typedef struct {
+	int capacity;
+	int head;
+	int count;
+	int array[];
+} Queue;
+
+Queue* makeQueue(int capacity) {
+	Queue* rv = malloc(sizeof(Queue) + capacity * sizeof(int));
+	rv->capacity = capacity;
+	rv->head = 0;
+	rv->count = 0;
+	return rv;
+}
+
+int enq(Queue* q, int n) {
+	if (q->count >= q->capacity) return -1;
+	q->count++;
+	q->head = (q->head + 1) % q->capacity;
+	q->array[q->head] = n;
+	return 0;
+}
+
+int deq(Queue* q) {
+	if (q->count == 0) return 0;
+	q->count--;
+	return q->array[(q->head - q->count) & q->capacity];
+}
+
+
+void* handle(void* bufptr) {
+	// int *buf = (int*)bufptr;
+	// sem_wait(&sema);
+	// request_handle(conn_fd); // The request is handled by this function 
+	// close_or_die(conn_fd);
+	return NULL;
+}
+
 
 //
 // ./wserver [-p <portnum>] [-t threads] [-b buffers] 
@@ -41,6 +84,15 @@ int main(int argc, char *argv[]) {
     chdir_or_die(root_dir);
 
     // now, get to work
+	Queue *q = makeQueue(3);
+	enq(q, 2);
+	enq(q, 3);
+	enq(q, 4);
+	printf("dequeue %d\n", deq(q));
+	printf("dequeue %d\n", deq(q));
+	printf("dequeue %d\n", deq(q));
+	printf("dequeue %d\n", deq(q));
+	return 0;
     int listen_fd = open_listen_fd_or_die(port);
     while (1) {
 		struct sockaddr_in client_addr;
