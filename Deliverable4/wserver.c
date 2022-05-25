@@ -6,7 +6,7 @@
 
 char default_root[] = ".";
 
-sem_t sema;
+sem_t mutex, fullSlots, emptySlots;
 
 typedef struct {
 	int capacity;
@@ -37,12 +37,18 @@ int deq(Queue* q) {
 	return q->array[(q->head - q->count) & q->capacity];
 }
 
+///////
 
-void* handle(void* bufptr) {
-	// int *buf = (int*)bufptr;
-	// sem_wait(&sema);
-	// request_handle(conn_fd); // The request is handled by this function 
-	// close_or_die(conn_fd);
+void* worker(void* queue) {
+	while (1) {
+		Queue* q = (Queue*)queue;
+		sem_wait(&fullSlots);
+		sem_wait(&mutex);
+		int fd = deq(q);
+		sem_post(&mutex);
+		sem_post(&emptySlots);
+		request_handle(fd); // The request is handled by this function 
+	}
 	return NULL;
 }
 
@@ -85,21 +91,22 @@ int main(int argc, char *argv[]) {
 
     // now, get to work
 	Queue *q = makeQueue(3);
-	enq(q, 2);
-	enq(q, 3);
-	enq(q, 4);
-	printf("dequeue %d\n", deq(q));
-	printf("dequeue %d\n", deq(q));
-	printf("dequeue %d\n", deq(q));
-	printf("dequeue %d\n", deq(q));
-	return 0;
+	
+	// Start worker threads
+
+	
     int listen_fd = open_listen_fd_or_die(port);
     while (1) {
 		struct sockaddr_in client_addr;
 		int client_len = sizeof(client_addr);
 		int conn_fd = accept_or_die(listen_fd, (sockaddr_t *) &client_addr, (socklen_t *) &client_len);
 		
-		request_handle(conn_fd); // The request is handled by this function 
+
+		sem_wait(&emptySlots);
+		sem_wait(&mutex);
+		enq(q, conn_fd);
+		sem_post(&mutex);
+		sem_post(&fullSlots);
 	}
     return 0;
 }
