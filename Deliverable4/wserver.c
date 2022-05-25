@@ -43,11 +43,16 @@ void* worker(void* queue) {
 	while (1) {
 		Queue* q = (Queue*)queue;
 		sem_wait(&fullSlots);
+		printf("Worker thread: Full slot");
 		sem_wait(&mutex);
+		printf("Worker thread: Locked queue");
 		int fd = deq(q);
 		sem_post(&mutex);
+		printf("Worker thread: Unlocked queue");
 		sem_post(&emptySlots);
+		printf("Worker thread: Handling request");
 		request_handle(fd); // The request is handled by this function 
+		printf("Worker thread: Handled request");
 	}
 	return NULL;
 }
@@ -90,23 +95,35 @@ int main(int argc, char *argv[]) {
     chdir_or_die(root_dir);
 
     // now, get to work
+	printf("Main thread: Creating workers\n");
 	Queue *q = makeQueue(3);
 	
 	// Start worker threads
-
+	sem_init(&fullSlots, 0, 0);
+	sem_init(&emptySlots, 0, buffer_size);
+	sem_init(&mutex, 0, 1);
+	for (int i = 0; i < threads; i++) {
+		pthread_t thread;
+		pthread_create(&thread, 0, worker, q);
+	}
 	
     int listen_fd = open_listen_fd_or_die(port);
     while (1) {
 		struct sockaddr_in client_addr;
 		int client_len = sizeof(client_addr);
+		printf("Main thread: Accepting\n");
 		int conn_fd = accept_or_die(listen_fd, (sockaddr_t *) &client_addr, (socklen_t *) &client_len);
 		
-
+		printf("Main thread: Accepted\n");
 		sem_wait(&emptySlots);
+		printf("Main thread: Waited for empty slots\n");
 		sem_wait(&mutex);
+		printf("Main thread: Locked queue\n");
 		enq(q, conn_fd);
 		sem_post(&mutex);
+		printf("Main thread: Unlocked queue\n");
 		sem_post(&fullSlots);
+		printf("Main thread: Posted full slot\n");
 	}
     return 0;
 }
