@@ -43,16 +43,16 @@ void* worker(void* queue) {
 	while (1) {
 		Queue* q = (Queue*)queue;
 		sem_wait(&fullSlots);
-		printf("Worker thread: Full slot");
+		printf("Worker thread: Full slot\n");
 		sem_wait(&mutex);
-		printf("Worker thread: Locked queue");
+		printf("Worker thread: Locked queue\n");
 		int fd = deq(q);
 		sem_post(&mutex);
-		printf("Worker thread: Unlocked queue");
+		printf("Worker thread: Unlocked queue\n");
 		sem_post(&emptySlots);
-		printf("Worker thread: Handling request");
+		printf("Worker thread: Handling request\n");
 		request_handle(fd); // The request is handled by this function 
-		printf("Worker thread: Handled request");
+		printf("Worker thread: Handled request\n");
 	}
 	return NULL;
 }
